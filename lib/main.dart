@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; 
-import 'package:sneaker_care_app/screens/home_page.dart'; 
-import 'package:sneaker_care_app/services/order_provider.dart'; 
+import 'package:provider/provider.dart';
+import 'package:sneaker_care_app/screens/landing_page.dart';
+import 'package:sneaker_care_app/services/order_provider.dart';
 
 void main() {
   runApp(
@@ -9,32 +9,37 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (context) => OrderProvider()),
       ],
-      child: const SneakerCareApp(),
+      child: const SneakimyCareApp(),
     ),
   );
 }
 
-
-class SneakerCareApp extends StatelessWidget {
-  const SneakerCareApp({super.key});
+class SneakimyCareApp extends StatelessWidget {
+  const SneakimyCareApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sneaker Care Indramayu',
+      title: 'Sneakimy Care',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFFFF8EC),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1), 
-          primary: const Color(0xFF0D47A1),   
-          secondary: const Color(0xFFFF6D00), 
+          seedColor: const Color(0xFFF59E0B),
+          primary: const Color(0xFF1F1F1F),
+          secondary: const Color(0xFFF59E0B),
           surface: Colors.white,
         ),
-        fontFamily: 'Roboto', 
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF1F1F1F),
+        ),
+        fontFamily: 'Roboto',
       ),
-
-      home: const HomePage(), 
+      home: const LandingPage(),
     );
   }
 }
