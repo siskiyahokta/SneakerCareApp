@@ -2,26 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sneaker_care_app/services/order_provider.dart';
 
-class FormPemesananPage extends StatefulWidget {
-  final String layanan;
+class EditOrderPage extends StatefulWidget {
+  final OrderModel order;
 
-  const FormPemesananPage({
+  const EditOrderPage({
     super.key,
-    required this.layanan,
+    required this.order,
   });
 
   @override
-  State<FormPemesananPage> createState() => _FormPemesananPageState();
+  State<EditOrderPage> createState() => _EditOrderPageState();
 }
 
-class _FormPemesananPageState extends State<FormPemesananPage> {
+class _EditOrderPageState extends State<EditOrderPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final _merkController = TextEditingController();
-  final _alamatController = TextEditingController();
-  final _catatanController = TextEditingController();
+  late TextEditingController _merkController;
+  late TextEditingController _alamatController;
+  late TextEditingController _catatanController;
 
-  String _selectedBahan = 'Canvas';
+  late String _selectedBahan;
 
   final List<String> _bahanSepatu = [
     'Canvas',
@@ -34,6 +34,21 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+
+    _merkController = TextEditingController(text: widget.order.merkSepatu);
+    _alamatController = TextEditingController(text: widget.order.alamatPickup);
+    _catatanController = TextEditingController(
+      text: widget.order.catatan == '-' ? '' : widget.order.catatan,
+    );
+
+    _selectedBahan = _bahanSepatu.contains(widget.order.bahanSepatu)
+        ? widget.order.bahanSepatu
+        : 'Canvas';
+  }
+
+  @override
   void dispose() {
     _merkController.dispose();
     _alamatController.dispose();
@@ -41,7 +56,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
     super.dispose();
   }
 
-  Future<void> _submitPesanan() async {
+  Future<void> _updatePesanan() async {
     if (!_formKey.currentState!.validate()) return;
 
     final orderProvider = Provider.of<OrderProvider>(
@@ -49,8 +64,8 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
       listen: false,
     );
 
-    final success = await orderProvider.tambahPesanan(
-      layanan: widget.layanan,
+    final success = await orderProvider.updatePesanan(
+      id: widget.order.id,
       merkSepatu: _merkController.text.trim(),
       bahanSepatu: _selectedBahan,
       alamatPickup: _alamatController.text.trim(),
@@ -62,7 +77,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Pesanan berhasil dibuat dan tersimpan ke database."),
+          content: Text("Data pesanan berhasil diperbarui di database."),
           backgroundColor: Color(0xFF059669),
         ),
       );
@@ -73,7 +88,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
         SnackBar(
           content: Text(
             orderProvider.errorMessage ??
-                "Gagal membuat pesanan. Cek koneksi API.",
+                "Gagal memperbarui pesanan. Cek koneksi API.",
           ),
           backgroundColor: Colors.red,
         ),
@@ -90,7 +105,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          "Form Pemesanan",
+          "Edit Pesanan",
           style: TextStyle(
             fontWeight: FontWeight.w900,
           ),
@@ -159,7 +174,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
                           ),
                         ),
                         onPressed:
-                            orderProvider.isLoading ? null : _submitPesanan,
+                            orderProvider.isLoading ? null : _updatePesanan,
                         child: orderProvider.isLoading
                             ? const SizedBox(
                                 width: 22,
@@ -170,7 +185,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
                                 ),
                               )
                             : const Text(
-                                "PESAN SEKARANG",
+                                "SIMPAN PERUBAHAN",
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
@@ -185,7 +200,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
                 const SizedBox(height: 12),
 
                 const Text(
-                  "Data pesanan akan dikirim ke backend dan disimpan ke database MySQL.",
+                  "Perubahan data pesanan akan dikirim ke backend dan diperbarui di database MySQL.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey,
@@ -234,7 +249,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(
-              Icons.cleaning_services_rounded,
+              Icons.edit_rounded,
               color: Colors.white,
               size: 32,
             ),
@@ -245,7 +260,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Layanan Dipilih",
+                  "Update Data Pesanan",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -254,7 +269,7 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  widget.layanan,
+                  widget.order.layanan,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 21,

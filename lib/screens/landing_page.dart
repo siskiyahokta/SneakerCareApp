@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sneaker_care_app/screens/admin_dashboard_page.dart';
 import 'package:sneaker_care_app/screens/home_page.dart';
 
 class LandingPage extends StatelessWidget {
@@ -27,7 +28,6 @@ class LandingPage extends StatelessWidget {
               children: [
                 const SizedBox(height: 20),
 
-                // BAGIAN ATAS
                 Align(
                   alignment: Alignment.topRight,
                   child: Container(
@@ -36,10 +36,10 @@ class LandingPage extends StatelessWidget {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.25),
+                        color: Colors.white.withValues(alpha: 0.25),
                       ),
                     ),
                     child: const Text(
@@ -55,20 +55,19 @@ class LandingPage extends StatelessWidget {
 
                 const Spacer(),
 
-                // LOGO / ICON
                 Container(
                   width: 130,
                   height: 130,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
+                    color: Colors.white.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.35),
+                      color: Colors.white.withValues(alpha: 0.35),
                       width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
+                        color: Colors.black.withValues(alpha: 0.25),
                         blurRadius: 30,
                         offset: const Offset(0, 15),
                       ),
@@ -83,7 +82,6 @@ class LandingPage extends StatelessWidget {
 
                 const SizedBox(height: 28),
 
-                // NAMA APLIKASI
                 const Text(
                   "Sneakimy Care",
                   textAlign: TextAlign.center,
@@ -98,7 +96,7 @@ class LandingPage extends StatelessWidget {
                 const SizedBox(height: 10),
 
                 const Text(
-                  "Rawat sneaker favoritmu dengan layanan cuci, restorasi, pick-up, dan tracking progress.",
+                  "Aplikasi jasa cuci dan perawatan sneaker dengan pick-up, tracking progress, dan dokumentasi before-after.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white70,
@@ -109,7 +107,6 @@ class LandingPage extends StatelessWidget {
 
                 const SizedBox(height: 26),
 
-                // FITUR CHIP
                 Wrap(
                   alignment: WrapAlignment.center,
                   spacing: 10,
@@ -132,17 +129,24 @@ class LandingPage extends StatelessWidget {
 
                 const Spacer(),
 
-                // TOMBOL UTAMA
                 SizedBox(
                   width: double.infinity,
                   height: 56,
-                  child: ElevatedButton(
+                  child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF1F1F1F),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    icon: const Icon(Icons.person_rounded),
+                    label: const Text(
+                      "Masuk sebagai Customer",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     onPressed: () {
@@ -153,33 +157,41 @@ class LandingPage extends StatelessWidget {
                         ),
                       );
                     },
-                    child: const Text(
-                      "Mulai Rawat Sneaker",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
                   ),
                 ),
 
                 const SizedBox(height: 14),
 
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HomePage(),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        width: 1.5,
                       ),
-                    );
-                  },
-                  child: const Text(
-                    "Lihat layanan dulu",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
                     ),
+                    icon: const Icon(Icons.admin_panel_settings_rounded),
+                    label: const Text(
+                      "Masuk sebagai Admin",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminDashboardPage(),
+                        ),
+                      );
+                    },
                   ),
                 ),
 
@@ -210,10 +222,10 @@ class _FeatureChip extends StatelessWidget {
         vertical: 10,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.16),
+        color: Colors.white.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: Colors.white.withOpacity(0.25),
+          color: Colors.white.withValues(alpha: 0.25),
         ),
       ),
       child: Row(
