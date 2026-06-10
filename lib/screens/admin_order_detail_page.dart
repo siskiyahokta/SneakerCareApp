@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sneaker_care_app/models/order_model.dart';
+import 'package:sneaker_care_app/services/api_service.dart';
 import 'package:sneaker_care_app/services/order_provider.dart';
 
 class AdminOrderDetailPage extends StatefulWidget {
-  final String orderId;
+  final OrderModel order;
 
-  const AdminOrderDetailPage({super.key, required this.orderId});
+  const AdminOrderDetailPage({super.key, required this.order});
 
   @override
   State<AdminOrderDetailPage> createState() => _AdminOrderDetailPageState();
 }
 
 class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
-  String? _selectedStatus;
   final TextEditingController _reasonController = TextEditingController();
+
+  final List<String> _statuses = const [
+    'Menunggu Kurir',
+    'Dijemput Kurir',
+    'Cleaning',
+    'Drying',
+    'Packing',
+    'Selesai',
+    'Ditolak',
+  ];
 
   @override
   void dispose() {
@@ -22,293 +32,280 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     super.dispose();
   }
 
-  Future<void> _updateStatus(OrderModel order) async {
-    if (_selectedStatus == null || _selectedStatus == order.status) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih status baru terlebih dahulu.')),
-      );
-      return;
-    }
-
-    if (_selectedStatus == OrderModel.rejectedStatus && _reasonController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Alasan penolakan wajib diisi.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final provider = Provider.of<OrderProvider>(context, listen: false);
-    final success = await provider.updateStatus(
-      id: order.id,
-      status: _selectedStatus!,
-      rejectionReason: _reasonController.text.trim(),
-    );
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? 'Status berhasil diubah dan notifikasi dikirim.'
-              : provider.errorMessage ?? 'Status gagal diubah.',
-        ),
-        backgroundColor: success ? const Color(0xFF16A34A) : Colors.red,
-      ),
-    );
-
-    if (success) {
-      setState(() => _selectedStatus = null);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<OrderProvider>(
-      builder: (context, provider, child) {
-        final order = provider.getOrderById(widget.orderId);
-
-        if (order == null) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Detail Pesanan')),
-            body: const Center(child: Text('Pesanan tidak ditemukan.')),
-          );
-        }
-
-        return Scaffold(
-          backgroundColor: const Color(0xFFFFF8EC),
-          appBar: AppBar(
-            backgroundColor: const Color(0xFFFFF8EC),
-            title: const Text('Detail Vendor', style: TextStyle(fontWeight: FontWeight.w900)),
-          ),
-          body: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-            children: [
-              _buildPhoto(order),
-              const SizedBox(height: 16),
-              _buildMainCard(order),
-              const SizedBox(height: 16),
-              _buildCustomerCard(order),
-              const SizedBox(height: 16),
-              _buildStatusCard(order, provider),
-            ],
-          ),
-        );
-      },
+    final provider = Provider.of<OrderProvider>(context);
+    final order = provider.orders.firstWhere(
+      (item) => item.id == widget.order.id,
+      orElse: () => widget.order,
     );
-  }
 
-  Widget _buildPhoto(OrderModel order) {
-    return Container(
-      height: 260,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFF8EC),
+      appBar: AppBar(
+        title: const Text('Detail Vendor'),
+        backgroundColor: const Color(0xFFFFF8EC),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(
-          fit: StackFit.expand,
+      body: RefreshIndicator(
+        onRefresh: provider.fetchOrders,
+        child: ListView(
+          padding: const EdgeInsets.all(18),
           children: [
-            if (order.hasPhoto)
-              Image.network(
-                order.shoePhotoUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _emptyPhoto(),
-              )
-            else
-              _emptyPhoto(),
-            Positioned(
-              left: 14,
-              top: 14,
-              child: _statusPill(order.status),
-            ),
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 14,
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.62),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.photo_camera_back_rounded, color: Colors.white),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        order.hasPhoto ? 'Foto sepatu dari customer' : 'Customer belum mengirim foto sepatu',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _buildHeader(order),
+            const SizedBox(height: 16),
+            _buildCustomerCard(order),
+            const SizedBox(height: 16),
+            _buildPhotoCard(order),
+            const SizedBox(height: 16),
+            _buildStatusAction(order, provider),
+            const SizedBox(height: 16),
+            _buildRatingCard(order),
           ],
         ),
       ),
     );
   }
 
-  Widget _emptyPhoto() {
+  Widget _buildHeader(OrderModel order) {
     return Container(
-      color: const Color(0xFFFFF3D6),
-      child: const Center(
-        child: Icon(Icons.image_not_supported_rounded, size: 62, color: Color(0xFFF59E0B)),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF111827), Color(0xFF2D2417)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 56,
+                width: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(Icons.inventory_2_rounded, color: Colors.white, size: 30),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(order.layanan, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 4),
+                    Text('Order #${order.id}', style: TextStyle(color: Colors.white.withValues(alpha: 0.70))),
+                  ],
+                ),
+              ),
+              _statusChip(order.status),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _headerMetric('Biaya', _currency(order.estimasiBiaya)),
+              const SizedBox(width: 12),
+              _headerMetric('Rating', order.rating == 0 ? '-' : '${order.rating}/5'),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMainCard(OrderModel order) {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(order.merkSepatu, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          _infoRow(Icons.design_services_rounded, 'Layanan', order.layanan),
-          _infoRow(Icons.category_rounded, 'Bahan', order.bahanSepatu),
-          _infoRow(Icons.payments_rounded, 'Estimasi', order.formattedPrice),
-          _infoRow(Icons.location_on_rounded, 'Alamat Pickup', order.alamatPickup),
-          if (order.catatan.trim().isNotEmpty) _infoRow(Icons.edit_note_rounded, 'Catatan', order.catatan),
-          if (order.isRejected && order.rejectionReason.trim().isNotEmpty)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(top: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEE2E2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                'Alasan ditolak: ${order.rejectionReason}',
-                style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w800),
-              ),
-            ),
-        ],
+  Widget _headerMetric(String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildCustomerCard(OrderModel order) {
-    return _card(
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Data Customer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
+          const Text('Data Customer', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 14),
           _infoRow(Icons.person_rounded, 'Nama', order.customerName.isEmpty ? '-' : order.customerName),
           _infoRow(Icons.email_rounded, 'Email', order.customerEmail.isEmpty ? '-' : order.customerEmail),
+          _infoRow(Icons.directions_walk_rounded, 'Alamat Pickup', order.alamatPickup),
+          _infoRow(Icons.checkroom_rounded, 'Merk Sepatu', order.merkSepatu),
+          _infoRow(Icons.texture_rounded, 'Bahan', order.bahanSepatu),
+          _infoRow(Icons.note_alt_rounded, 'Catatan', order.catatan.isEmpty ? '-' : order.catatan),
+          if (order.rejectionReason.isNotEmpty)
+            _infoRow(Icons.warning_rounded, 'Alasan Ditolak', order.rejectionReason),
         ],
       ),
     );
   }
 
-  Widget _buildStatusCard(OrderModel order, OrderProvider provider) {
-    return _card(
+  Widget _buildPhotoCard(OrderModel order) {
+    final image = ApiService.imageUrl(order.shoePhoto);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Update Status Pesanan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          const Text(
-            'Setiap perubahan status akan disimpan ke halaman notifikasi customer dan dikirim lewat FCM jika token tersedia.',
-            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, height: 1.4),
+          const Text('Foto Sepatu Customer', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: image.isEmpty
+                ? Container(
+                    height: 210,
+                    width: double.infinity,
+                    color: const Color(0xFFF3F4F6),
+                    child: const Center(child: Text('Customer belum upload foto')),
+                  )
+                : Image.network(
+                    image,
+                    height: 260,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 210,
+                      width: double.infinity,
+                      color: const Color(0xFFF3F4F6),
+                      child: const Center(child: Text('Foto tidak bisa dimuat')),
+                    ),
+                  ),
           ),
-          const SizedBox(height: 14),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusAction(OrderModel order, OrderProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Update Status Pesanan', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: OrderModel.adminStatuses.map((status) {
-              final selected = _selectedStatus == status;
-              final current = order.status == status;
+            children: _statuses.map((status) {
+              final selected = status.toLowerCase() == order.status.toLowerCase();
               final color = _statusColor(status);
               return ChoiceChip(
-                label: Text(current ? '$status • aktif' : status),
                 selected: selected,
-                selectedColor: color,
-                disabledColor: color.withValues(alpha: 0.12),
-                backgroundColor: Colors.white,
-                side: BorderSide(color: color.withValues(alpha: 0.4)),
+                label: Text(status),
+                selectedColor: color.withValues(alpha: 0.20),
+                backgroundColor: const Color(0xFFF9FAFB),
                 labelStyle: TextStyle(
-                  color: selected ? Colors.white : color,
-                  fontWeight: FontWeight.w900,
+                  color: selected ? color : const Color(0xFF374151),
+                  fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
                 ),
-                onSelected: current ? null : (_) => setState(() => _selectedStatus = status),
+                side: BorderSide(color: selected ? color : const Color(0xFFE5E7EB)),
+                onSelected: provider.isLoading ? null : (_) => _handleStatus(order, provider, status),
               );
             }).toList(),
-          ),
-          if (_selectedStatus == OrderModel.rejectedStatus) ...[
-            const SizedBox(height: 14),
-            TextField(
-              controller: _reasonController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: 'Alasan Penolakan',
-                hintText: 'Contoh: bahan terlalu rusak / layanan tidak tersedia',
-                filled: true,
-                fillColor: const Color(0xFFFFF8EC),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton.icon(
-              onPressed: provider.isSubmitting ? null : () => _updateStatus(order),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _selectedStatus == OrderModel.rejectedStatus
-                    ? const Color(0xFFDC2626)
-                    : const Color(0xFFF59E0B),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              ),
-              icon: provider.isSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Icon(Icons.notifications_active_rounded),
-              label: const Text('Simpan & Kirim Notifikasi', style: TextStyle(fontWeight: FontWeight.w900)),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _card({required Widget child}) {
+  Widget _buildRatingCard(OrderModel order) {
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Rating & Ulasan Customer', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          if (!order.hasRating)
+            const Text('Customer belum memberikan rating.', style: TextStyle(color: Color(0xFF6B7280)))
+          else ...[
+            Row(
+              children: List.generate(5, (i) {
+                return Icon(
+                  Icons.star_rounded,
+                  color: i < order.rating ? const Color(0xFFF59E0B) : const Color(0xFFD1D5DB),
+                  size: 30,
+                );
+              }),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              order.review.isEmpty ? 'Tidak ada komentar.' : order.review,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
         ],
       ),
-      child: child,
+    );
+  }
+
+  Future<void> _handleStatus(OrderModel order, OrderProvider provider, String status) async {
+    String reason = '';
+
+    if (status == 'Ditolak') {
+      _reasonController.clear();
+      final result = await showDialog<String>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Alasan Penolakan'),
+            content: TextField(
+              controller: _reasonController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Contoh: Area pickup di luar jangkauan / data kurang lengkap',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+              ElevatedButton(onPressed: () => Navigator.pop(context, _reasonController.text.trim()), child: const Text('Simpan')),
+            ],
+          );
+        },
+      );
+      if (result == null) return;
+      reason = result.isEmpty ? 'Pesanan ditolak oleh pemilik usaha.' : result;
+    }
+
+    final success = await provider.updateStatus(
+      id: order.id,
+      status: status,
+      customerEmail: order.customerEmail,
+      rejectionReason: reason,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Status berhasil diperbarui menjadi $status.' : provider.errorMessage ?? 'Gagal update status.'),
+        backgroundColor: success ? const Color(0xFF059669) : Colors.red,
+      ),
     );
   }
 
@@ -318,49 +315,46 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: const Color(0xFFF59E0B), size: 20),
+          Icon(icon, size: 20, color: const Color(0xFFF59E0B)),
           const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontWeight: FontWeight.w800, height: 1.35)),
-              ],
-            ),
-          ),
+          SizedBox(width: 105, child: Text(label, style: const TextStyle(color: Color(0xFF6B7280)))),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w800))),
         ],
       ),
     );
   }
 
-  Widget _statusPill(String status) {
+  Widget _statusChip(String status) {
     final color = _statusColor(status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: color,
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.40)),
       ),
-      child: Text(status, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+      child: Text(status, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w900)),
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 8))],
     );
   }
 
   Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'selesai':
-        return const Color(0xFF16A34A);
-      case 'ditolak':
-        return const Color(0xFFDC2626);
-      case 'dijemput kurir':
-      case 'cleaning':
-      case 'drying':
-      case 'packing':
-        return const Color(0xFFF59E0B);
-      case 'menunggu kurir':
-      default:
-        return const Color(0xFF64748B);
-    }
+    final s = status.toLowerCase();
+    if (s == 'selesai') return const Color(0xFF059669);
+    if (s == 'ditolak') return const Color(0xFFDC2626);
+    if (s == 'menunggu kurir') return const Color(0xFF6B7280);
+    return const Color(0xFFF59E0B);
+  }
+
+  String _currency(int value) {
+    final text = value.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => '.');
+    return 'Rp $text';
   }
 }

@@ -10,8 +10,10 @@ class OrderModel {
   final String customerEmail;
   final int estimasiBiaya;
   final String shoePhoto;
-  final String shoePhotoUrl;
   final String rejectionReason;
+  final int rating;
+  final String review;
+  final String reviewedAt;
   final String createdAt;
   final String updatedAt;
 
@@ -27,77 +29,80 @@ class OrderModel {
     required this.customerEmail,
     required this.estimasiBiaya,
     required this.shoePhoto,
-    required this.shoePhotoUrl,
     required this.rejectionReason,
+    required this.rating,
+    required this.review,
+    required this.reviewedAt,
     required this.createdAt,
     required this.updatedAt,
   });
 
-  static const String waitingStatus = 'Menunggu Kurir';
-  static const String pickedStatus = 'Dijemput Kurir';
-  static const String cleaningStatus = 'Cleaning';
-  static const String dryingStatus = 'Drying';
-  static const String packingStatus = 'Packing';
-  static const String doneStatus = 'Selesai';
-  static const String rejectedStatus = 'Ditolak';
-
-  static const List<String> statusFlow = [
-    waitingStatus,
-    pickedStatus,
-    cleaningStatus,
-    dryingStatus,
-    packingStatus,
-    doneStatus,
-  ];
-
-  static const List<String> adminStatuses = [
-    waitingStatus,
-    pickedStatus,
-    cleaningStatus,
-    dryingStatus,
-    packingStatus,
-    doneStatus,
-    rejectedStatus,
-  ];
-
-  bool get canEdit => status.toLowerCase() == waitingStatus.toLowerCase();
-  bool get canCancel => status.toLowerCase() == waitingStatus.toLowerCase();
-  bool get isFinished => status.toLowerCase() == doneStatus.toLowerCase();
-  bool get isRejected => status.toLowerCase() == rejectedStatus.toLowerCase();
-  bool get isWaiting => status.toLowerCase() == waitingStatus.toLowerCase();
-  bool get isProcess => !isWaiting && !isFinished && !isRejected;
-  bool get hasPhoto => shoePhotoUrl.trim().isNotEmpty;
-
-  int get progressIndex {
-    if (isRejected) return 0;
-    final index = statusFlow.indexWhere(
-      (item) => item.toLowerCase() == status.toLowerCase(),
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    return OrderModel(
+      id: _read(json, ['id']),
+      layanan: _read(json, ['layanan', 'service', 'service_name']),
+      merkSepatu: _read(json, ['merk_sepatu', 'merkSepatu', 'brand']),
+      bahanSepatu: _read(json, ['bahan_sepatu', 'bahanSepatu', 'material']),
+      alamatPickup: _read(json, ['alamat_pickup', 'alamatPickup', 'pickup_address']),
+      catatan: _read(json, ['catatan', 'notes']),
+      status: _read(json, ['status'], fallback: 'Menunggu Kurir'),
+      customerName: _read(json, ['customer_name', 'customerName', 'nama_customer']),
+      customerEmail: _read(json, ['customer_email', 'customerEmail', 'email_customer']),
+      estimasiBiaya: _readInt(json, ['estimasi_biaya', 'estimasiBiaya', 'price']),
+      shoePhoto: _read(json, ['shoe_photo', 'shoePhoto', 'foto_sepatu', 'photo']),
+      rejectionReason: _read(json, ['rejection_reason', 'rejectionReason', 'alasan_penolakan']),
+      rating: _readInt(json, ['rating']),
+      review: _read(json, ['review', 'ulasan']),
+      reviewedAt: _read(json, ['reviewed_at', 'reviewedAt']),
+      createdAt: _read(json, ['created_at', 'createdAt']),
+      updatedAt: _read(json, ['updated_at', 'updatedAt']),
     );
-    return index == -1 ? 0 : index;
   }
 
-  double get progressValue {
-    if (isRejected) return 0;
-    final max = statusFlow.length - 1;
-    if (max <= 0) return 0;
-    return progressIndex / max;
-  }
-
-  String get formattedPrice {
-    final text = estimasiBiaya.toString();
-    final buffer = StringBuffer();
-    int counter = 0;
-
-    for (int i = text.length - 1; i >= 0; i--) {
-      buffer.write(text[i]);
-      counter++;
-      if (counter == 3 && i != 0) {
-        buffer.write('.');
-        counter = 0;
+  static String _read(
+    Map<String, dynamic> json,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value.toString();
       }
     }
+    return fallback;
+  }
 
-    return 'Rp ${buffer.toString().split('').reversed.join()}';
+  static int _readInt(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+      if (value is int) return value;
+      return int.tryParse(value.toString()) ?? 0;
+    }
+    return 0;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'layanan': layanan,
+      'merk_sepatu': merkSepatu,
+      'bahan_sepatu': bahanSepatu,
+      'alamat_pickup': alamatPickup,
+      'catatan': catatan,
+      'status': status,
+      'customer_name': customerName,
+      'customer_email': customerEmail,
+      'estimasi_biaya': estimasiBiaya,
+      'shoe_photo': shoePhoto,
+      'rejection_reason': rejectionReason,
+      'rating': rating,
+      'review': review,
+      'reviewed_at': reviewedAt,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+    };
   }
 
   OrderModel copyWith({
@@ -112,8 +117,10 @@ class OrderModel {
     String? customerEmail,
     int? estimasiBiaya,
     String? shoePhoto,
-    String? shoePhotoUrl,
     String? rejectionReason,
+    int? rating,
+    String? review,
+    String? reviewedAt,
     String? createdAt,
     String? updatedAt,
   }) {
@@ -129,75 +136,24 @@ class OrderModel {
       customerEmail: customerEmail ?? this.customerEmail,
       estimasiBiaya: estimasiBiaya ?? this.estimasiBiaya,
       shoePhoto: shoePhoto ?? this.shoePhoto,
-      shoePhotoUrl: shoePhotoUrl ?? this.shoePhotoUrl,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      rating: rating ?? this.rating,
+      review: review ?? this.review,
+      reviewedAt: reviewedAt ?? this.reviewedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
-  factory OrderModel.fromJson(Map<String, dynamic> json) {
-    return OrderModel(
-      id: _readString(json, ['id', 'order_id']),
-      layanan: _readString(json, ['layanan', 'service', 'service_name']),
-      merkSepatu: _readString(json, ['merk_sepatu', 'merkSepatu', 'brand']),
-      bahanSepatu: _readString(json, ['bahan_sepatu', 'bahanSepatu', 'material']),
-      alamatPickup: _readString(json, ['alamat_pickup', 'alamatPickup', 'address']),
-      catatan: _readString(json, ['catatan', 'note', 'notes']),
-      status: _readString(json, ['status'], defaultValue: waitingStatus),
-      customerName: _readString(json, ['customer_name', 'customerName', 'nama_customer']),
-      customerEmail: _readString(json, ['customer_email', 'customerEmail', 'email_customer']),
-      estimasiBiaya: _readInt(json, ['estimasi_biaya', 'estimasiBiaya', 'price'], defaultValue: 0),
-      shoePhoto: _readString(json, ['shoe_photo', 'shoePhoto']),
-      shoePhotoUrl: _readString(json, ['shoe_photo_url', 'shoePhotoUrl', 'photo_url']),
-      rejectionReason: _readString(json, ['rejection_reason', 'rejectionReason', 'alasan_tolak']),
-      createdAt: _readString(json, ['created_at', 'createdAt']),
-      updatedAt: _readString(json, ['updated_at', 'updatedAt']),
-    );
-  }
+  bool get isWaiting => status.toLowerCase() == 'menunggu kurir';
+  bool get isFinished => status.toLowerCase() == 'selesai';
+  bool get isRejected => status.toLowerCase() == 'ditolak';
+  bool get hasRating => rating > 0;
+  bool get canEdit => isWaiting;
+  bool get canReview => isFinished && !hasRating;
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'layanan': layanan,
-      'merkSepatu': merkSepatu,
-      'bahanSepatu': bahanSepatu,
-      'alamatPickup': alamatPickup,
-      'catatan': catatan,
-      'status': status,
-      'customerName': customerName,
-      'customerEmail': customerEmail,
-      'estimasiBiaya': estimasiBiaya,
-      'shoePhoto': shoePhoto,
-      'shoePhotoUrl': shoePhotoUrl,
-      'rejectionReason': rejectionReason,
-    };
-  }
-
-  static String _readString(
-    Map<String, dynamic> json,
-    List<String> keys, {
-    String defaultValue = '',
-  }) {
-    for (final key in keys) {
-      final value = json[key];
-      if (value != null) return value.toString();
-    }
-    return defaultValue;
-  }
-
-  static int _readInt(
-    Map<String, dynamic> json,
-    List<String> keys, {
-    int defaultValue = 0,
-  }) {
-    for (final key in keys) {
-      final value = json[key];
-      if (value == null) continue;
-      if (value is int) return value;
-      if (value is double) return value.toInt();
-      return int.tryParse(value.toString()) ?? defaultValue;
-    }
-    return defaultValue;
+  bool get isInProgress {
+    final s = status.toLowerCase();
+    return s == 'dijemput kurir' || s == 'cleaning' || s == 'drying' || s == 'packing';
   }
 }
