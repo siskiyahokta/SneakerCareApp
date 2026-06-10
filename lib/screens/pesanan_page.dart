@@ -1,312 +1,361 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sneaker_care_app/screens/order_detail_page.dart';
+import 'package:sneaker_care_app/services/auth_provider.dart';
 import 'package:sneaker_care_app/services/order_provider.dart';
 
-class PesananPage extends StatelessWidget {
+class PesananPage extends StatefulWidget {
   const PesananPage({super.key});
+
+  @override
+  State<PesananPage> createState() => _PesananPageState();
+}
+
+class _PesananPageState extends State<PesananPage> {
+  String _filter = 'Semua';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOrders());
+  }
+
+  Future<void> _loadOrders() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+
+    await orderProvider.fetchOrders(
+      customerEmail: authProvider.isCustomer ? authProvider.email : null,
+    );
+  }
+
+  List<OrderModel> _filteredOrders(List<OrderModel> orders) {
+    if (_filter == 'Aktif') {
+      return orders.where((order) => !order.isFinished).toList();
+    }
+    if (_filter == 'Selesai') {
+      return orders.where((order) => order.isFinished).toList();
+    }
+    return orders;
+  }
+
+  Future<void> _confirmCancel(OrderModel order) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Batalkan Pesanan?'),
+        content: Text(
+          'Pesanan ${order.merkSepatu} akan dibatalkan. Aksi ini hanya bisa dilakukan saat status Menunggu Kurir.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Tidak'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ya, Batalkan', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+    final success = await orderProvider.hapusPesanan(
+      order.id,
+      customerEmail: authProvider.email,
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Pesanan berhasil dibatalkan.'
+              : orderProvider.errorMessage ?? 'Pesanan gagal dibatalkan.',
+        ),
+        backgroundColor: success ? const Color(0xFF059669) : Colors.red,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8EC),
       appBar: AppBar(
-        title: const Text(
-          "Pesanan Saya",
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF1F1F1F),
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
         automaticallyImplyLeading: false,
+        title: const Text(
+          'Pesanan Saya',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _loadOrders,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
       ),
       body: Consumer<OrderProvider>(
         builder: (context, orderProvider, child) {
-          if (orderProvider.pesananList.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 82,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    "Belum ada pesanan aktif nih.",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            );
+          final orders = _filteredOrders(orderProvider.pesananList);
+
+          if (orderProvider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: orderProvider.pesananList.length,
-            itemBuilder: (context, index) {
-              final pesanan = orderProvider.pesananList[index];
-
-              return Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(24),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => OrderDetailPage(
-                          orderId: pesanan.id,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 18),
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.07),
-                          blurRadius: 18,
-                          offset: const Offset(0, 9),
-                        ),
-                      ],
-                      color: Colors.white,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 54,
-                              height: 54,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1F1F1F),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: const Icon(
-                                Icons.directions_run_rounded,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    pesanan.merkSepatu,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 17,
-                                      color: Color(0xFF1F1F1F),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  Text(
-                                    pesanan.layanan,
-                                    style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline_rounded,
-                                color: Colors.red,
-                              ),
-                              onPressed: () {
-                                _showDeleteDialog(
-                                  context,
-                                  orderProvider,
-                                  pesanan.id,
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        _buildStatusBadge(pesanan.status),
-
-                        const SizedBox(height: 16),
-
-                        _buildInfoRow(
-                          icon: Icons.texture_rounded,
-                          title: "Bahan",
-                          value: pesanan.bahanSepatu,
-                        ),
-                        const SizedBox(height: 10),
-                        _buildInfoRow(
-                          icon: Icons.location_on_rounded,
-                          title: "Pick-up",
-                          value: pesanan.alamatPickup,
-                        ),
-                        const SizedBox(height: 10),
-                        _buildInfoRow(
-                          icon: Icons.notes_rounded,
-                          title: "Catatan",
-                          value: pesanan.catatan,
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B)
-                                .withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.touch_app_rounded,
-                                color: Color(0xFFF59E0B),
-                                size: 18,
-                              ),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  "Ketuk kartu untuk melihat detail dan tracking progress.",
-                                  style: TextStyle(
-                                    color: Color(0xFFF59E0B),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+          return RefreshIndicator(
+            onRefresh: _loadOrders,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+              children: [
+                _buildSummary(orderProvider),
+                const SizedBox(height: 16),
+                _buildFilter(),
+                const SizedBox(height: 16),
+                if (orderProvider.errorMessage != null)
+                  _buildError(orderProvider.errorMessage!),
+                if (orders.isEmpty) _buildEmptyState(),
+                ...orders.map(_buildOrderCard),
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildStatusBadge(String status) {
+  Widget _buildSummary(OrderProvider provider) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(30),
+        color: const Color(0xFF1F1F1F),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          _summaryItem('Total', provider.totalOrders.toString()),
+          _summaryItem('Proses', provider.processOrders.toString()),
+          _summaryItem('Selesai', provider.completedOrders.toString()),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryItem(String label, String value) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilter() {
+    final filters = ['Semua', 'Aktif', 'Selesai'];
+    return Row(
+      children: filters.map((item) {
+        final selected = item == _filter;
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: ChoiceChip(
+            label: Text(item),
+            selected: selected,
+            selectedColor: const Color(0xFFF59E0B),
+            labelStyle: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF1F1F1F),
+              fontWeight: FontWeight.w800,
+            ),
+            onSelected: (_) => setState(() => _filter = item),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildOrderCard(OrderModel order) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OrderDetailPage(orderId: order.id),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3D6),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.directions_run_rounded,
+                  color: Color(0xFFF59E0B),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.merkSepatu,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '${order.layanan} • ${order.bahanSepatu}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    LinearProgressIndicator(
+                      value: order.progressValue,
+                      minHeight: 7,
+                      borderRadius: BorderRadius.circular(99),
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: const AlwaysStoppedAnimation(Color(0xFFF59E0B)),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _statusBadge(order.status),
+                        if (order.estimasiBiaya > 0)
+                          Text(
+                            order.formattedPrice,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF059669),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (order.canCancel)
+                IconButton(
+                  tooltip: 'Batalkan',
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                  onPressed: () => _confirmCancel(order),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusBadge(String status) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3D6),
+        borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
         status,
         style: const TextStyle(
           color: Color(0xFFF59E0B),
-          fontSize: 13,
           fontWeight: FontWeight.w900,
+          fontSize: 12,
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 19,
-          color: Colors.grey,
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(
-                color: Color(0xFF1F1F1F),
-                fontSize: 13.5,
-                height: 1.4,
-              ),
-              children: [
-                TextSpan(
-                  text: "$title: ",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                TextSpan(
-                  text: value,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+  Widget _buildError(String message) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade100),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w700),
+      ),
     );
   }
 
-  void _showDeleteDialog(
-    BuildContext context,
-    OrderProvider orderProvider,
-    String id,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Batalkan Pesanan?"),
-        content: const Text(
-          "Apakah kamu yakin ingin membatalkan pesanan perawatan sepatu ini?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Tidak"),
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
+          SizedBox(height: 14),
+          Text(
+            'Belum ada pesanan.',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
           ),
-          TextButton(
-            onPressed: () {
-              orderProvider.hapusPesanan(id);
-              Navigator.pop(context);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Pesanan berhasil dibatalkan."),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            },
-            child: const Text(
-              "Ya, Batalkan",
-              style: TextStyle(color: Colors.red),
-            ),
+          SizedBox(height: 6),
+          Text(
+            'Silakan buat pesanan dari halaman Beranda.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
           ),
         ],
       ),

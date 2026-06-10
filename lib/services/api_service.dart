@@ -2,28 +2,32 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // PENTING:
-  // Kalau pakai HP fisik, isi dengan IP laptop dari ipconfig.
-  // Contoh: http://192.168.1.8/sneakimy_care_api
-  static const String baseUrl = "http://192.168.10.11/sneakimy_care_api";
+  // GANTI IP INI kalau IP laptop berubah.
+  // Laptop/Laragon: http://localhost/sneakimy_care_api
+  // HP fisik:       http://IP-LAPTOP/sneakimy_care_api
+  static const String baseUrl = 'http://192.168.10.11/sneakimy_care_api';
+
+  static const Duration timeoutDuration = Duration(seconds: 15);
 
   static Map<String, String> get headers => {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       };
 
-  static Future<Map<String, dynamic>> getOrders() async {
+  static Future<Map<String, dynamic>> getOrders({
+    String? customerEmail,
+  }) async {
     try {
-      final response = await http
-          .get(
-            Uri.parse("$baseUrl/orders/get_orders.php"),
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 10));
+      final uri = Uri.parse('$baseUrl/orders/get_orders.php').replace(
+        queryParameters: customerEmail == null || customerEmail.trim().isEmpty
+            ? null
+            : {'customer_email': customerEmail.trim()},
+      );
 
+      final response = await http.get(uri, headers: headers).timeout(timeoutDuration);
       return _handleResponse(response);
     } catch (e) {
-      return _error("Gagal konek ke API get orders: $e");
+      return _error('Gagal mengambil data pesanan: $e');
     }
   }
 
@@ -33,25 +37,29 @@ class ApiService {
     required String bahanSepatu,
     required String alamatPickup,
     required String catatan,
+    required String customerName,
+    required String customerEmail,
   }) async {
     try {
       final response = await http
           .post(
-            Uri.parse("$baseUrl/orders/add_order.php"),
+            Uri.parse('$baseUrl/orders/add_order.php'),
             headers: headers,
             body: jsonEncode({
-              "layanan": layanan,
-              "merkSepatu": merkSepatu,
-              "bahanSepatu": bahanSepatu,
-              "alamatPickup": alamatPickup,
-              "catatan": catatan,
+              'layanan': layanan,
+              'merkSepatu': merkSepatu,
+              'bahanSepatu': bahanSepatu,
+              'alamatPickup': alamatPickup,
+              'catatan': catatan,
+              'customerName': customerName,
+              'customerEmail': customerEmail,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(timeoutDuration);
 
       return _handleResponse(response);
     } catch (e) {
-      return _error("Gagal konek ke API add order: $e");
+      return _error('Gagal membuat pesanan: $e');
     }
   }
 
@@ -65,21 +73,21 @@ class ApiService {
     try {
       final response = await http
           .post(
-            Uri.parse("$baseUrl/orders/update_order.php"),
+            Uri.parse('$baseUrl/orders/update_order.php'),
             headers: headers,
             body: jsonEncode({
-              "id": id,
-              "merkSepatu": merkSepatu,
-              "bahanSepatu": bahanSepatu,
-              "alamatPickup": alamatPickup,
-              "catatan": catatan,
+              'id': id,
+              'merkSepatu': merkSepatu,
+              'bahanSepatu': bahanSepatu,
+              'alamatPickup': alamatPickup,
+              'catatan': catatan,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(timeoutDuration);
 
       return _handleResponse(response);
     } catch (e) {
-      return _error("Gagal konek ke API update order: $e");
+      return _error('Gagal mengubah pesanan: $e');
     }
   }
 
@@ -90,18 +98,18 @@ class ApiService {
     try {
       final response = await http
           .post(
-            Uri.parse("$baseUrl/orders/update_status.php"),
+            Uri.parse('$baseUrl/orders/update_status.php'),
             headers: headers,
             body: jsonEncode({
-              "id": id,
-              "status": status,
+              'id': id,
+              'status': status,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(timeoutDuration);
 
       return _handleResponse(response);
     } catch (e) {
-      return _error("Gagal konek ke API update status: $e");
+      return _error('Gagal memperbarui status pesanan: $e');
     }
   }
 
@@ -111,48 +119,55 @@ class ApiService {
     try {
       final response = await http
           .post(
-            Uri.parse("$baseUrl/orders/delete_order.php"),
+            Uri.parse('$baseUrl/orders/delete_order.php'),
             headers: headers,
-            body: jsonEncode({
-              "id": id,
-            }),
+            body: jsonEncode({'id': id}),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(timeoutDuration);
 
       return _handleResponse(response);
     } catch (e) {
-      return _error("Gagal konek ke API delete order: $e");
+      return _error('Gagal menghapus pesanan: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getServices() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/services/get_services.php'), headers: headers)
+          .timeout(timeoutDuration);
+      return _handleResponse(response);
+    } catch (e) {
+      return _error('Gagal mengambil layanan: $e');
     }
   }
 
   static Map<String, dynamic> _handleResponse(http.Response response) {
     try {
       final decoded = jsonDecode(response.body);
-
       if (decoded is Map<String, dynamic>) {
-        return decoded;
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return decoded;
+        }
+        return {
+          'success': false,
+          'message': decoded['message']?.toString() ?? 'Request gagal.',
+          'data': decoded['data'],
+        };
       }
-
-      return {
-        "success": false,
-        "message": "Response API bukan format JSON Map",
-        "data": decoded,
-      };
-    } catch (e) {
-      return {
-        "success": false,
-        "message":
-            "Response API tidak bisa dibaca. Status: ${response.statusCode}",
-        "data": response.body,
-      };
+      return _error('Format response API tidak valid.');
+    } catch (_) {
+      return _error(
+        'Response API bukan JSON. Status ${response.statusCode}: ${response.body}',
+      );
     }
   }
 
   static Map<String, dynamic> _error(String message) {
     return {
-      "success": false,
-      "message": message,
-      "data": null,
+      'success': false,
+      'message': message,
+      'data': null,
     };
   }
 }

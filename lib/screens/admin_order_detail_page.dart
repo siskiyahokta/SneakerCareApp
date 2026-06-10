@@ -1,155 +1,256 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sneaker_care_app/models/order_model.dart';
 import 'package:sneaker_care_app/services/order_provider.dart';
 
-class AdminOrderDetailPage extends StatelessWidget {
+class AdminOrderDetailPage extends StatefulWidget {
   final String orderId;
 
-  const AdminOrderDetailPage({
-    super.key,
-    required this.orderId,
-  });
+  const AdminOrderDetailPage({super.key, required this.orderId});
 
-  static const List<String> progressList = [
-    'Menunggu Kurir',
-    'Dijemput Kurir',
-    'Cleaning',
-    'Drying',
-    'Packing',
-    'Selesai',
-  ];
+  @override
+  State<AdminOrderDetailPage> createState() => _AdminOrderDetailPageState();
+}
 
-  int _getCurrentIndex(String status) {
-    final index = progressList.indexOf(status);
-    return index == -1 ? 0 : index;
+class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
+  String? _selectedStatus;
+
+  Future<void> _updateStatus(OrderModel order) async {
+    if (_selectedStatus == null || _selectedStatus == order.status) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih status baru terlebih dahulu.')),
+      );
+      return;
+    }
+
+    final provider = Provider.of<OrderProvider>(context, listen: false);
+    final success = await provider.updateStatus(id: order.id, status: _selectedStatus!);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Status pesanan berhasil diperbarui.'
+              : provider.errorMessage ?? 'Status gagal diperbarui.',
+        ),
+        backgroundColor: success ? const Color(0xFF059669) : Colors.red,
+      ),
+    );
+  }
+
+  Future<void> _deleteOrder(OrderModel order) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Pesanan?'),
+        content: Text('Pesanan ${order.merkSepatu} akan dihapus dari database.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    final provider = Provider.of<OrderProvider>(context, listen: false);
+    final success = await provider.hapusPesanan(order.id);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Pesanan berhasil dihapus.' : provider.errorMessage ?? 'Gagal hapus pesanan.'),
+        backgroundColor: success ? const Color(0xFF059669) : Colors.red,
+      ),
+    );
+
+    if (success) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<OrderProvider>(
       builder: (context, provider, child) {
-        final result = provider.pesananList
-            .where((order) => order.id == orderId)
-            .toList();
+        final order = provider.getOrderById(widget.orderId);
 
-        if (result.isEmpty) {
+        if (order == null) {
           return Scaffold(
-            backgroundColor: const Color(0xFFFFF8EC),
-            appBar: AppBar(
-              backgroundColor: const Color(0xFF1F1F1F),
-              foregroundColor: Colors.white,
-              title: const Text("Detail Admin"),
-            ),
-            body: const Center(
-              child: Text("Pesanan tidak ditemukan."),
-            ),
+            appBar: AppBar(title: const Text('Detail Pesanan')),
+            body: const Center(child: Text('Pesanan tidak ditemukan.')),
           );
         }
 
-        final order = result.first;
-        final currentIndex = _getCurrentIndex(order.status);
+        _selectedStatus ??= order.status;
 
         return Scaffold(
           backgroundColor: const Color(0xFFFFF8EC),
           appBar: AppBar(
-            backgroundColor: const Color(0xFF1F1F1F),
-            foregroundColor: Colors.white,
-            elevation: 0,
-            title: const Text(
-              "Kelola Pesanan",
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
+            title: const Text('Kelola Pesanan', style: TextStyle(fontWeight: FontWeight.w900)),
+            actions: [
+              IconButton(
+                tooltip: 'Hapus',
+                onPressed: provider.isSubmitting ? null : () => _deleteOrder(order),
+                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
               ),
-            ),
+            ],
           ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-              child: Column(
-                children: [
-                  _buildHeaderCard(order),
-                  const SizedBox(height: 20),
-                  _buildDetailCard(order),
-                  const SizedBox(height: 20),
-                  _buildProgressCard(currentIndex),
-                  const SizedBox(height: 20),
-                  _buildAdminUpdateCard(
-                    context,
-                    provider,
-                    order,
-                    currentIndex,
-                  ),
-                ],
-              ),
-            ),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            children: [
+              _buildHeader(order),
+              const SizedBox(height: 18),
+              _buildStatusEditor(provider, order),
+              const SizedBox(height: 18),
+              _buildInfoCard(order),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildHeaderCard(OrderModel order) {
+  Widget _buildHeader(OrderModel order) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF1F1F1F),
-            Color(0xFF3B2F2F),
-            Color(0xFFF59E0B),
-          ],
+          colors: [Color(0xFF1F1F1F), Color(0xFF3B2F2F), Color(0xFFF59E0B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(26),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(22),
+          Text(
+            order.status,
+            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            order.merkSepatu,
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${order.layanan} • ${order.bahanSepatu}',
+            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusEditor(OrderProvider provider, OrderModel order) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Update Status', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _selectedStatus,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFFFFF8EC),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
             ),
-            child: const Icon(
-              Icons.admin_panel_settings_rounded,
-              color: Colors.white,
-              size: 34,
+            items: OrderModel.statusFlow
+                .map((status) => DropdownMenuItem(value: status, child: Text(status)))
+                .toList(),
+            onChanged: provider.isSubmitting
+                ? null
+                : (value) {
+                    if (value != null) setState(() => _selectedStatus = value);
+                  },
+          ),
+          const SizedBox(height: 14),
+          LinearProgressIndicator(
+            value: order.progressValue,
+            minHeight: 9,
+            borderRadius: BorderRadius.circular(99),
+            backgroundColor: Colors.grey.shade200,
+            valueColor: const AlwaysStoppedAnimation(Color(0xFFF59E0B)),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF59E0B),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade400,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: provider.isSubmitting ? null : () => _updateStatus(order),
+              icon: provider.isSubmitting
+                  ? const SizedBox(
+                      width: 19,
+                      height: 19,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                    )
+                  : const Icon(Icons.save_rounded),
+              label: Text(
+                provider.isSubmitting ? 'Menyimpan...' : 'Simpan Status',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
             ),
           ),
-          const SizedBox(width: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(OrderModel order) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Detail Customer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 14),
+          _row(Icons.person_rounded, 'Nama', order.customerName.isEmpty ? '-' : order.customerName),
+          _row(Icons.email_rounded, 'Email', order.customerEmail.isEmpty ? '-' : order.customerEmail),
+          _row(Icons.location_on_rounded, 'Alamat Pickup', order.alamatPickup),
+          _row(Icons.note_alt_rounded, 'Catatan', order.catatan.isEmpty ? '-' : order.catatan),
+          _row(Icons.payments_rounded, 'Estimasi Biaya', order.estimasiBiaya > 0 ? order.formattedPrice : '-'),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xFFF59E0B), size: 22),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Admin Progress Control",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  order.merkSepatu,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  order.status,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w700, fontSize: 12)),
+                const SizedBox(height: 3),
+                Text(value, style: const TextStyle(fontWeight: FontWeight.w800, height: 1.35)),
               ],
             ),
           ),
@@ -158,359 +259,17 @@ class AdminOrderDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailCard(OrderModel order) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Data Pesanan Customer",
-            style: TextStyle(
-              color: Color(0xFF1F1F1F),
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildInfoRow(
-            icon: Icons.cleaning_services_rounded,
-            title: "Layanan",
-            value: order.layanan,
-          ),
-          _buildInfoRow(
-            icon: Icons.texture_rounded,
-            title: "Bahan Sepatu",
-            value: order.bahanSepatu,
-          ),
-          _buildInfoRow(
-            icon: Icons.location_on_rounded,
-            title: "Alamat Pick-up",
-            value: order.alamatPickup,
-          ),
-          _buildInfoRow(
-            icon: Icons.notes_rounded,
-            title: "Catatan",
-            value: order.catatan,
-          ),
-          _buildInfoRow(
-            icon: Icons.access_time_rounded,
-            title: "Tanggal Pesan",
-            value: order.createdAt,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressCard(int currentIndex) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Progress Pengerjaan",
-            style: TextStyle(
-              color: Color(0xFF1F1F1F),
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Column(
-            children: List.generate(progressList.length, (index) {
-              final isDone = index < currentIndex;
-              final isActive = index == currentIndex;
-
-              return _buildProgressItem(
-                title: progressList[index],
-                isDone: isDone,
-                isActive: isActive,
-                isLast: index == progressList.length - 1,
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAdminUpdateCard(
-    BuildContext context,
-    OrderProvider provider,
-    OrderModel order,
-    int currentIndex,
-  ) {
-    final isFinished = currentIndex >= progressList.length - 1;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Update Status Admin",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            "",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              height: 1.4,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isFinished ? Colors.grey : const Color(0xFFF59E0B),
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: isFinished || provider.isLoading
-                  ? null
-                  : () async {
-                      final nextStatus = progressList[currentIndex + 1];
-
-                      final success = await provider.updateStatus(
-                        order.id,
-                        nextStatus,
-                      );
-
-                      if (!context.mounted) return;
-
-                      if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              "Status berhasil diubah menjadi $nextStatus.",
-                            ),
-                            backgroundColor: const Color(0xFF059669),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              provider.errorMessage ??
-                                  "Gagal update status pesanan.",
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-              child: provider.isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(
-                      isFinished
-                          ? "PESANAN SUDAH SELESAI"
-                          : "UPDATE KE ${progressList[currentIndex + 1].toUpperCase()}",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: progressList.map((status) {
-              final selected = status == order.status;
-
-              return ChoiceChip(
-                label: Text(status),
-                selected: selected,
-                selectedColor: const Color(0xFFF59E0B),
-                labelStyle: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF1F1F1F),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-                onSelected: provider.isLoading
-                    ? null
-                    : (_) async {
-                        final success = await provider.updateStatus(
-                          order.id,
-                          status,
-                        );
-
-                        if (!context.mounted) return;
-
-                        if (success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("Status diubah ke $status."),
-                              backgroundColor: const Color(0xFF059669),
-                            ),
-                          );
-                        }
-                      },
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressItem({
-    required String title,
-    required bool isDone,
-    required bool isActive,
-    required bool isLast,
-  }) {
-    final Color activeColor =
-        isDone || isActive ? const Color(0xFFF59E0B) : Colors.grey.shade300;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: activeColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isDone
-                    ? Icons.check_rounded
-                    : isActive
-                        ? Icons.local_laundry_service_rounded
-                        : Icons.circle_outlined,
-                color: isDone || isActive ? Colors.white : Colors.grey,
-                size: 18,
-              ),
-            ),
-            if (!isLast)
-              Container(
-                width: 3,
-                height: 34,
-                color: activeColor.withValues(alpha: 0.35),
-              ),
-          ],
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              title,
-              style: TextStyle(
-                color:
-                    isDone || isActive ? const Color(0xFF1F1F1F) : Colors.grey,
-                fontSize: 15,
-                fontWeight: isActive ? FontWeight.w900 : FontWeight.w700,
-              ),
-            ),
-          ),
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 14,
+          offset: const Offset(0, 8),
         ),
       ],
-    );
-  }
-
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 13),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: const Color(0xFFF59E0B),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  color: Color(0xFF1F1F1F),
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-                children: [
-                  TextSpan(
-                    text: "$title: ",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  TextSpan(
-                    text: value,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sneaker_care_app/screens/pesanan_page.dart';
+import 'package:sneaker_care_app/services/auth_provider.dart';
 import 'package:sneaker_care_app/services/order_provider.dart';
 
 class FormPemesananPage extends StatefulWidget {
@@ -16,21 +18,20 @@ class FormPemesananPage extends StatefulWidget {
 
 class _FormPemesananPageState extends State<FormPemesananPage> {
   final _formKey = GlobalKey<FormState>();
-
   final _merkController = TextEditingController();
   final _alamatController = TextEditingController();
   final _catatanController = TextEditingController();
 
-  String _selectedBahan = 'Canvas';
+  String _bahanSepatu = 'Canvas';
 
-  final List<String> _bahanSepatu = [
+  final List<String> _bahanOptions = const [
     'Canvas',
     'Leather',
     'Suede',
-    'Nubuck',
-    'Knit',
+    'Knit/Flyknit',
     'Mesh',
-    'Synthetic',
+    'Nubuck',
+    'Campuran',
   ];
 
   @override
@@ -41,20 +42,20 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
     super.dispose();
   }
 
-  Future<void> _submitPesanan() async {
+  Future<void> _submitOrder() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final orderProvider = Provider.of<OrderProvider>(
-      context,
-      listen: false,
-    );
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
 
     final success = await orderProvider.tambahPesanan(
       layanan: widget.layanan,
       merkSepatu: _merkController.text.trim(),
-      bahanSepatu: _selectedBahan,
+      bahanSepatu: _bahanSepatu,
       alamatPickup: _alamatController.text.trim(),
       catatan: _catatanController.text.trim(),
+      customerName: authProvider.name.isEmpty ? 'Customer Sneakimy' : authProvider.name,
+      customerEmail: authProvider.email.isEmpty ? 'customer@sneakimycare.com' : authProvider.email,
     );
 
     if (!mounted) return;
@@ -62,19 +63,20 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Pesanan berhasil dibuat dan tersimpan ke database."),
+          content: Text('Pesanan berhasil dibuat. Kurir akan segera menjemput.'),
           backgroundColor: Color(0xFF059669),
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const PesananPage()),
+        (route) => route.isFirst,
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            orderProvider.errorMessage ??
-                "Gagal membuat pesanan. Cek koneksi API.",
-          ),
+          content: Text(orderProvider.errorMessage ?? 'Pesanan gagal dibuat.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -86,182 +88,122 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8EC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1F1F1F),
-        foregroundColor: Colors.white,
-        elevation: 0,
         title: const Text(
-          "Form Pemesanan",
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          'Form Pemesanan',
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                _buildHeaderCard(),
-
-                const SizedBox(height: 22),
-
-                _buildTextField(
-                  controller: _merkController,
-                  label: "Merk & Seri Sepatu",
-                  hint: "Contoh: New Balance 550 / Adidas Samba",
-                  icon: Icons.directions_run_rounded,
-                  validatorText: "Merk dan seri sepatu wajib diisi",
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildDropdownBahan(),
-
-                const SizedBox(height: 16),
-
-                _buildTextField(
-                  controller: _alamatController,
-                  label: "Alamat Pick-up",
-                  hint: "Contoh: Kost dekat Polindra / Jatibarang",
-                  icon: Icons.location_on_rounded,
-                  maxLines: 3,
-                  validatorText: "Alamat pick-up wajib diisi",
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildTextField(
-                  controller: _catatanController,
-                  label: "Catatan Tambahan",
-                  hint: "Contoh: Bagian sole kuning, hati-hati bahan suede",
-                  icon: Icons.notes_rounded,
-                  maxLines: 3,
-                  isRequired: false,
-                ),
-
-                const SizedBox(height: 26),
-
-                Consumer<OrderProvider>(
-                  builder: (context, orderProvider, child) {
-                    return SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF59E0B),
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey.shade400,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        onPressed:
-                            orderProvider.isLoading ? null : _submitPesanan,
-                        child: orderProvider.isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                "PESAN SEKARANG",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 12),
-
-                const Text(
-                  "Data pesanan akan dikirim ke backend dan disimpan ke database MySQL.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+      body: Consumer<OrderProvider>(
+        builder: (context, orderProvider, child) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildServiceHeader(),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _merkController,
+                    label: 'Merk & Seri Sepatu',
+                    hint: 'Contoh: Nike Air Jordan 1',
+                    icon: Icons.directions_run_rounded,
+                    validatorText: 'Merk sepatu wajib diisi.',
                   ),
-                ),
-              ],
+                  const SizedBox(height: 14),
+                  _buildDropdown(),
+                  const SizedBox(height: 14),
+                  _buildTextField(
+                    controller: _alamatController,
+                    label: 'Alamat Pickup',
+                    hint: 'Contoh: Kos dekat Polindra / Jatibarang',
+                    icon: Icons.location_on_rounded,
+                    validatorText: 'Alamat pickup wajib diisi.',
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildTextField(
+                    controller: _catatanController,
+                    label: 'Catatan Tambahan',
+                    hint: 'Contoh: noda membandel di bagian midsole',
+                    icon: Icons.note_alt_rounded,
+                    maxLines: 3,
+                    isRequired: false,
+                  ),
+                  const SizedBox(height: 22),
+                  _buildInfoBox(),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF59E0B),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade400,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      icon: orderProvider.isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded),
+                      label: Text(
+                        orderProvider.isSubmitting ? 'Memproses...' : 'Buat Pesanan',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                        ),
+                      ),
+                      onPressed: orderProvider.isSubmitting ? null : _submitOrder,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildHeaderCard() {
+  Widget _buildServiceHeader() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF1F1F1F),
-            Color(0xFF3B2F2F),
-            Color(0xFFF59E0B),
-          ],
+          colors: [Color(0xFF1F1F1F), Color(0xFFF59E0B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.22),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.cleaning_services_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
+          const Icon(Icons.cleaning_services_rounded, color: Colors.white, size: 38),
+          const SizedBox(height: 14),
+          const Text(
+            'Layanan Dipilih',
+            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Layanan Dipilih",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  widget.layanan,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 6),
+          Text(
+            widget.layanan,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -269,26 +211,25 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
     );
   }
 
-  Widget _buildDropdownBahan() {
+  Widget _buildDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedBahan,
+      value: _bahanSepatu,
       decoration: _inputDecoration(
-        label: "Bahan Sepatu",
-        hint: "Pilih bahan sepatu",
-        icon: Icons.texture_rounded,
+        label: 'Bahan Sepatu',
+        hint: 'Pilih bahan sepatu',
+        icon: Icons.category_rounded,
       ),
-      items: _bahanSepatu.map((bahan) {
-        return DropdownMenuItem<String>(
-          value: bahan,
-          child: Text(bahan),
-        );
-      }).toList(),
+      items: _bahanOptions
+          .map(
+            (item) => DropdownMenuItem(
+              value: item,
+              child: Text(item),
+            ),
+          )
+          .toList(),
       onChanged: (value) {
-        if (value != null) {
-          setState(() {
-            _selectedBahan = value;
-          });
-        }
+        if (value == null) return;
+        setState(() => _bahanSepatu = value);
       },
     );
   }
@@ -305,17 +246,11 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
-      decoration: _inputDecoration(
-        label: label,
-        hint: hint,
-        icon: icon,
-        maxLines: maxLines,
-      ),
+      decoration: _inputDecoration(label: label, hint: hint, icon: icon),
       validator: (value) {
         if (isRequired && (value == null || value.trim().isEmpty)) {
-          return validatorText ?? "Field ini wajib diisi";
+          return validatorText ?? '$label wajib diisi.';
         }
-
         return null;
       },
     );
@@ -325,34 +260,50 @@ class _FormPemesananPageState extends State<FormPemesananPage> {
     required String label,
     required String hint,
     required IconData icon,
-    int maxLines = 1,
   }) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Padding(
-        padding: EdgeInsets.only(
-          bottom: maxLines > 1 ? 44 : 0,
-        ),
-        child: Icon(icon),
-      ),
+      prefixIcon: Icon(icon),
       filled: true,
       fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(
-          color: Colors.grey.shade300,
-        ),
+        borderSide: BorderSide(color: Colors.grey.shade300),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(
-          color: Color(0xFFF59E0B),
-          width: 2,
-        ),
+        borderSide: const BorderSide(color: Color(0xFFF59E0B), width: 2),
+      ),
+    );
+  }
+
+  Widget _buildInfoBox() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.orange.shade100),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_rounded, color: Color(0xFFF59E0B)),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Pesanan masih bisa diedit atau dibatalkan selama status masih Menunggu Kurir.',
+              style: TextStyle(
+                color: Color(0xFF444444),
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
