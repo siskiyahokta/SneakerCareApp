@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "471119169821-a0fh95v2g0nnh4ctgnad350nf6q86p6i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sneaker_care_app",
+            "certificate_hash": "23913a9daf9de7c9207bb80eb23dacf40aa13883"
+          }
+        },
+        {
           "client_id": "471119169821-s3mot75nh410l5f12qk6dr1qtai1tu46.apps.googleusercontent.com",
           "client_type": 3
         }

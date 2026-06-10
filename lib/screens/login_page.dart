@@ -40,12 +40,28 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
 
     if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Login berhasil sebagai ${authProvider.email}'),
+          backgroundColor: const Color(0xFF059669),
+        ),
+      );
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => const HomePage(),
         ),
         (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            authProvider.errorMessage ?? 'Login Google gagal.',
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }

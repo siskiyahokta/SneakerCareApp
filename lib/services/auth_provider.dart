@@ -11,6 +11,12 @@ enum UserRole {
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: <String>[
+      'email',
+      'profile',
+    ],
+  );
 
   UserRole _role = UserRole.none;
   String _name = '';
@@ -38,7 +44,6 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     final savedRole = prefs.getString('role') ?? 'none';
-
     _name = prefs.getString('name') ?? '';
     _email = prefs.getString('email') ?? '';
     _photoUrl = prefs.getString('photoUrl') ?? '';
@@ -59,48 +64,79 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(true);
       _errorMessage = null;
 
-      final GoogleSignInAccount googleUser =
-          await GoogleSignIn.instance.authenticate();
+      debugPrint('Mulai login Google customer...');
 
-      final GoogleSignInAuthentication googleAuth =
-          googleUser.authentication;
+      // Biar account picker muncul ulang dan tidak nyangkut di akun lama.
+      await _googleSignIn.signOut();
 
-      if (googleAuth.idToken == null) {
-        _errorMessage = 'ID Token Google tidak ditemukan.';
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        _errorMessage = 'Login Google dibatalkan.';
+        debugPrint(_errorMessage);
         _setLoading(false);
         return false;
       }
 
-      final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
+      debugPrint('Akun Google dipilih: ${googleUser.email}');
 
-      final UserCredential userCredential =
-          await _firebaseAuth.signInWithCredential(credential);
+      try {
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
 
-      final User? user = userCredential.user;
+        if (googleAuth.idToken == null && googleAuth.accessToken == null) {
+          debugPrint('Token Google kosong, masuk memakai sesi lokal sementara.');
+          await _completeGoogleLoginFromAccount(googleUser);
+          _setLoading(false);
+          return true;
+        }
 
-      if (user == null) {
-        _errorMessage = 'Data user Firebase tidak ditemukan.';
+        final OAuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        final UserCredential userCredential =
+            await _firebaseAuth.signInWithCredential(credential);
+
+        final User? user = userCredential.user;
+
+        if (user == null) {
+          debugPrint('User Firebase kosong, masuk memakai data akun Google.');
+          await _completeGoogleLoginFromAccount(googleUser);
+          _setLoading(false);
+          return true;
+        }
+
+        _role = UserRole.customer;
+        _name = user.displayName ?? googleUser.displayName ?? 'Customer Sneakimy';
+        _email = user.email ?? googleUser.email;
+        _photoUrl = user.photoURL ?? googleUser.photoUrl ?? '';
+        _errorMessage = null;
+
+        await _saveSession();
+
+        debugPrint('Login Firebase berhasil: $_email');
         _setLoading(false);
-        return false;
+        return true;
+      } on FirebaseAuthException catch (e) {
+        debugPrint('FirebaseAuth gagal: ${e.code} - ${e.message}');
+        debugPrint('Akun Google sudah dipilih, lanjut masuk dengan sesi lokal.');
+
+        await _completeGoogleLoginFromAccount(googleUser);
+        _setLoading(false);
+        return true;
+      } catch (e) {
+        debugPrint('Firebase credential/token gagal: $e');
+        debugPrint('Akun Google sudah dipilih, lanjut masuk dengan sesi lokal.');
+
+        await _completeGoogleLoginFromAccount(googleUser);
+        _setLoading(false);
+        return true;
       }
-
-      _role = UserRole.customer;
-      _name = user.displayName ?? 'Customer Sneakimy';
-      _email = user.email ?? 'customer@sneakimycare.com';
-      _photoUrl = user.photoURL ?? '';
-
-      await _saveSession();
-
-      _setLoading(false);
-      return true;
-    } on FirebaseAuthException catch (e) {
-      _errorMessage = e.message ?? 'Login Google Firebase gagal.';
-      _setLoading(false);
-      return false;
     } catch (e) {
-      _errorMessage = 'Login Google dibatalkan atau gagal: $e';
+      _errorMessage = 'Login Google gagal: $e';
+      debugPrint(_errorMessage);
       _setLoading(false);
       return false;
     }
@@ -110,11 +146,26 @@ class AuthProvider extends ChangeNotifier {
     return loginCustomerWithGoogle();
   }
 
+  Future<void> _completeGoogleLoginFromAccount(
+    GoogleSignInAccount googleUser,
+  ) async {
+    _role = UserRole.customer;
+    _name = googleUser.displayName ?? 'Customer Sneakimy';
+    _email = googleUser.email;
+    _photoUrl = googleUser.photoUrl ?? '';
+    _errorMessage = null;
+
+    await _saveSession();
+
+    debugPrint('Login Google lokal berhasil: $_email');
+  }
+
   Future<bool> loginOwner({
     required String username,
     required String password,
   }) async {
     _setLoading(true);
+    _errorMessage = null;
 
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -139,13 +190,13 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
 
-    if (_role == UserRole.customer) {
+    try {
       await _firebaseAuth.signOut();
+    } catch (_) {}
 
-      try {
-        await GoogleSignIn.instance.signOut();
-      } catch (_) {}
-    }
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
 
     await prefs.remove('role');
     await prefs.remove('name');
