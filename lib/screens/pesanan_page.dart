@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sneaker_care_app/models/order_model.dart';
 import 'package:sneaker_care_app/screens/order_detail_page.dart';
 import 'package:sneaker_care_app/services/auth_provider.dart';
 import 'package:sneaker_care_app/services/order_provider.dart';
@@ -302,21 +303,42 @@ class _PesananPageState extends State<PesananPage> {
   }
 
   Widget _statusBadge(String status) {
+    final color = _statusColor(status);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3D6),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
         status,
-        style: const TextStyle(
-          color: Color(0xFFF59E0B),
+        style: TextStyle(
+          color: color,
           fontWeight: FontWeight.w900,
           fontSize: 12,
         ),
       ),
     );
+  }
+
+  Color _statusColor(String status) {
+    final value = status.toLowerCase();
+
+    if (value == 'selesai') {
+      return const Color(0xFF059669);
+    }
+
+    if (value == 'ditolak' || value == 'dibatalkan') {
+      return const Color(0xFFDC2626);
+    }
+
+    if (value == 'menunggu kurir') {
+      return const Color(0xFF6B7280);
+    }
+
+    return const Color(0xFFF59E0B);
   }
 
   Widget _buildError(String message) {

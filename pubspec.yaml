@@ -18,11 +18,12 @@ dependencies:
 
   firebase_core: ^4.10.0
   firebase_auth: ^6.5.2
-
-  # Dipakai versi 6.2.2 biar cocok dengan kode GoogleSignIn().signIn()
   google_sign_in: 6.2.2
   firebase_messaging: ^16.3.0
   flutter_local_notifications: ^22.0.0
+
+  # Batch 14: upload foto sepatu dari kamera/galeri
+  image_picker: ^1.2.1
 
 dev_dependencies:
   flutter_test:

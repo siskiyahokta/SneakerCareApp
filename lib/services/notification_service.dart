@@ -54,7 +54,6 @@ class NotificationService {
       iOS: iosInit,
     );
 
-    // flutter_local_notifications versi baru pakai named parameter `settings`.
     await _localNotifications.initialize(
       settings: initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -91,6 +90,14 @@ class NotificationService {
         message.data['message']?.toString() ??
         'Ada update pesanan baru.';
 
+    await showManualNotification(title: title, body: body, payload: message.data.toString());
+  }
+
+  static Future<void> showManualNotification({
+    required String title,
+    required String body,
+    String payload = '',
+  }) async {
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         _androidChannel.id,
@@ -103,13 +110,20 @@ class NotificationService {
       iOS: const DarwinNotificationDetails(),
     );
 
-    // flutter_local_notifications versi baru pakai named parameter.
     await _localNotifications.show(
       id: (DateTime.now().millisecondsSinceEpoch ~/ 1000) % 2147483647,
       title: title,
       body: body,
       notificationDetails: details,
-      payload: message.data.toString(),
+      payload: payload,
+    );
+  }
+
+  static Future<void> showOrderCreatedNotification() async {
+    await showManualNotification(
+      title: 'Sneakimy Care',
+      body: 'Pesanan berhasil dibuat dan menunggu konfirmasi pemilik usaha.',
+      payload: 'order_created',
     );
   }
 

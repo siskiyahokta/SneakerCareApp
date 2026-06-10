@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sneaker_care_app/models/order_model.dart';
 import 'package:sneaker_care_app/screens/admin_order_detail_page.dart';
 import 'package:sneaker_care_app/screens/landing_page.dart';
 import 'package:sneaker_care_app/services/auth_provider.dart';
@@ -46,8 +47,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       backgroundColor: const Color(0xFFFFF8EC),
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFFFFF8EC),
         title: const Text(
-          'Dashboard Pemilik',
+          'Dashboard Vendor',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
@@ -74,7 +76,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           return RefreshIndicator(
             onRefresh: () => provider.fetchOrders(),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
               children: [
                 _buildHeader(provider),
                 const SizedBox(height: 16),
@@ -99,76 +101,145 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1F1F1F), Color(0xFF3B2F2F), Color(0xFFF59E0B)],
+          colors: [Color(0xFF151515), Color(0xFF30261D), Color(0xFFF59E0B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Sneakimy Care',
-            style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.storefront_rounded, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Sneakimy Care', style: TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
+                    SizedBox(height: 2),
+                    Text('Panel pemilik usaha', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
           const Text(
-            'Kelola pesanan customer, update status pengerjaan, dan pantau order masuk.',
+            'Pantau foto sepatu customer, konfirmasi pesanan, dan kirim update status otomatis ke pelanggan.',
             style: TextStyle(color: Colors.white70, height: 1.45, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 16),
-          Text(
-            '${provider.totalOrders} total pesanan',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _miniHeaderStat('${provider.totalOrders}', 'Total'),
+              _miniHeaderStat('${provider.processOrders}', 'Proses'),
+              _miniHeaderStat('${provider.completedOrders}', 'Selesai'),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStats(OrderProvider provider) {
-    return Row(
-      children: [
-        _statCard('Menunggu', provider.waitingOrders.toString(), Icons.schedule_rounded),
-        const SizedBox(width: 10),
-        _statCard('Proses', provider.processOrders.toString(), Icons.autorenew_rounded),
-        const SizedBox(width: 10),
-        _statCard('Selesai', provider.completedOrders.toString(), Icons.check_circle_rounded),
-      ],
-    );
-  }
-
-  Widget _statCard(String label, String value, IconData icon) {
+  Widget _miniHeaderStat(String value, String label) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          color: Colors.white.withValues(alpha: 0.13),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: const Color(0xFFF59E0B)),
-            const SizedBox(height: 10),
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w700, fontSize: 12)),
+            Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w700)),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildStats(OrderProvider provider) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.8,
+      children: [
+        _statCard('Menunggu', provider.waitingOrders.toString(), Icons.schedule_rounded, const Color(0xFF64748B)),
+        _statCard('Proses', provider.processOrders.toString(), Icons.autorenew_rounded, const Color(0xFFF59E0B)),
+        _statCard('Selesai', provider.completedOrders.toString(), Icons.check_circle_rounded, const Color(0xFF16A34A)),
+        _statCard('Ditolak', provider.rejectedOrdersCount.toString(), Icons.cancel_rounded, const Color(0xFFDC2626)),
+      ],
+    );
+  }
+
+  Widget _statCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w800, fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFilter() {
-    final filters = ['Semua', ...OrderModel.statusFlow];
+    final filters = ['Semua', ...OrderModel.adminStatuses];
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -176,13 +247,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         itemBuilder: (context, index) {
           final status = filters[index];
           final selected = status == _selectedStatus;
+          final color = status == 'Semua' ? const Color(0xFF1F1F1F) : _statusColor(status);
+
           return ChoiceChip(
             label: Text(status),
             selected: selected,
-            selectedColor: const Color(0xFFF59E0B),
+            selectedColor: color,
+            backgroundColor: Colors.white,
+            side: BorderSide(color: color.withValues(alpha: 0.26)),
             labelStyle: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF1F1F1F),
-              fontWeight: FontWeight.w800,
+              color: selected ? Colors.white : color,
+              fontWeight: FontWeight.w900,
             ),
             onSelected: (_) => setState(() => _selectedStatus = status),
           );
@@ -194,11 +269,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   Widget _buildOrderCard(OrderModel order) {
+    final color = _statusColor(order.status);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -208,7 +285,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ],
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         onTap: () {
           Navigator.push(
             context,
@@ -216,53 +293,74 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           );
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3D6),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(Icons.inventory_2_rounded, color: Color(0xFFF59E0B)),
-              ),
+              _orderImage(order),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      order.merkSepatu,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            order.merkSepatu,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                          ),
+                        ),
+                        _statusPill(order.status),
+                      ],
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 6),
                     Text(
                       order.customerName.isEmpty ? order.customerEmail : order.customerName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+                      style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    Row(
                       children: [
-                        _badge(order.status),
-                        Text(
-                          order.layanan,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        Icon(Icons.design_services_rounded, size: 16, color: color),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            order.layanan,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 7,
+                        value: order.isRejected ? 1 : order.progressValue,
+                        backgroundColor: color.withValues(alpha: 0.12),
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.payments_rounded, size: 15, color: Colors.grey.shade600),
+                        const SizedBox(width: 4),
+                        Text(order.formattedPrice, style: const TextStyle(fontWeight: FontWeight.w900)),
+                        const Spacer(),
+                        const Icon(Icons.chevron_right_rounded, color: Colors.grey),
                       ],
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded),
             ],
           ),
         ),
@@ -270,16 +368,35 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _badge(String status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
+  Widget _orderImage(OrderModel order) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 76,
+        height: 92,
         color: const Color(0xFFFFF3D6),
-        borderRadius: BorderRadius.circular(99),
+        child: order.hasPhoto
+            ? Image.network(
+                order.shoePhotoUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported_rounded, color: Color(0xFFF59E0B)),
+              )
+            : const Icon(Icons.photo_camera_back_rounded, color: Color(0xFFF59E0B), size: 32),
+      ),
+    );
+  }
+
+  Widget _statusPill(String status) {
+    final color = _statusColor(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         status,
-        style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.w900, fontSize: 12),
+        style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 11),
       ),
     );
   }
@@ -288,22 +405,47 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(16)),
-      child: Text(message, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(message, style: const TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w800)),
     );
   }
 
   Widget _buildEmpty() {
     return Container(
       padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      ),
       child: const Column(
         children: [
-          Icon(Icons.inbox_rounded, color: Colors.grey, size: 58),
-          SizedBox(height: 12),
-          Text('Belum ada pesanan pada filter ini.', style: TextStyle(fontWeight: FontWeight.w900)),
+          Icon(Icons.inbox_rounded, size: 56, color: Colors.grey),
+          SizedBox(height: 10),
+          Text('Belum ada pesanan', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+          SizedBox(height: 6),
+          Text('Pesanan customer akan tampil di sini.', style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'selesai':
+        return const Color(0xFF16A34A);
+      case 'ditolak':
+        return const Color(0xFFDC2626);
+      case 'dijemput kurir':
+      case 'cleaning':
+      case 'drying':
+      case 'packing':
+        return const Color(0xFFF59E0B);
+      case 'menunggu kurir':
+      default:
+        return const Color(0xFF64748B);
+    }
   }
 }

@@ -7,16 +7,14 @@ class ApiService {
   // HP fisik:       http://IP-LAPTOP/sneakimy_care_api
   static const String baseUrl = 'http://192.168.10.11/sneakimy_care_api';
 
-  static const Duration timeoutDuration = Duration(seconds: 15);
+  static const Duration timeoutDuration = Duration(seconds: 20);
 
   static Map<String, String> get headers => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
 
-  static Future<Map<String, dynamic>> getOrders({
-    String? customerEmail,
-  }) async {
+  static Future<Map<String, dynamic>> getOrders({String? customerEmail}) async {
     try {
       final uri = Uri.parse('$baseUrl/orders/get_orders.php').replace(
         queryParameters: customerEmail == null || customerEmail.trim().isEmpty
@@ -39,11 +37,32 @@ class ApiService {
     required String catatan,
     required String customerName,
     required String customerEmail,
+    String? shoePhotoPath,
   }) async {
     try {
+      final uri = Uri.parse('$baseUrl/orders/add_order.php');
+
+      // Kalau ada foto, pakai multipart supaya file benar-benar terkirim ke PHP.
+      if (shoePhotoPath != null && shoePhotoPath.trim().isNotEmpty) {
+        final request = http.MultipartRequest('POST', uri)
+          ..headers.addAll({'Accept': 'application/json'})
+          ..fields['layanan'] = layanan
+          ..fields['merkSepatu'] = merkSepatu
+          ..fields['bahanSepatu'] = bahanSepatu
+          ..fields['alamatPickup'] = alamatPickup
+          ..fields['catatan'] = catatan
+          ..fields['customerName'] = customerName
+          ..fields['customerEmail'] = customerEmail
+          ..files.add(await http.MultipartFile.fromPath('shoe_photo', shoePhotoPath));
+
+        final streamed = await request.send().timeout(timeoutDuration);
+        final response = await http.Response.fromStream(streamed);
+        return _handleResponse(response);
+      }
+
       final response = await http
           .post(
-            Uri.parse('$baseUrl/orders/add_order.php'),
+            uri,
             headers: headers,
             body: jsonEncode({
               'layanan': layanan,
@@ -94,6 +113,7 @@ class ApiService {
   static Future<Map<String, dynamic>> updateStatus({
     required String id,
     required String status,
+    String rejectionReason = '',
   }) async {
     try {
       final response = await http
@@ -103,6 +123,7 @@ class ApiService {
             body: jsonEncode({
               'id': id,
               'status': status,
+              'rejectionReason': rejectionReason,
             }),
           )
           .timeout(timeoutDuration);
@@ -113,9 +134,7 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> deleteOrder({
-    required String id,
-  }) async {
+  static Future<Map<String, dynamic>> deleteOrder({required String id}) async {
     try {
       final response = await http
           .post(
@@ -170,9 +189,7 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getNotifications({
-    required String customerEmail,
-  }) async {
+  static Future<Map<String, dynamic>> getNotifications({required String customerEmail}) async {
     try {
       final uri = Uri.parse('$baseUrl/notifications/get_notifications.php').replace(
         queryParameters: {'customer_email': customerEmail.trim()},
@@ -209,6 +226,21 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> sendTestFcm({required String fcmToken}) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/notifications/send_test_fcm.php'),
+            headers: headers,
+            body: jsonEncode({'fcmToken': fcmToken}),
+          )
+          .timeout(timeoutDuration);
+      return _handleResponse(response);
+    } catch (e) {
+      return _error('Gagal mengirim test FCM: $e');
+    }
+  }
+
   static Map<String, dynamic> _handleResponse(http.Response response) {
     try {
       final decoded = jsonDecode(response.body);
@@ -224,17 +256,11 @@ class ApiService {
       }
       return _error('Format response API tidak valid.');
     } catch (_) {
-      return _error(
-        'Response API bukan JSON. Status ${response.statusCode}: ${response.body}',
-      );
+      return _error('Response API bukan JSON. Status ${response.statusCode}: ${response.body}');
     }
   }
 
   static Map<String, dynamic> _error(String message) {
-    return {
-      'success': false,
-      'message': message,
-      'data': null,
-    };
+    return {'success': false, 'message': message, 'data': null};
   }
 }

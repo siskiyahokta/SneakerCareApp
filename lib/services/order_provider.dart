@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:sneaker_care_app/models/order_model.dart';
 import 'package:sneaker_care_app/services/api_service.dart';
 
-export 'package:sneaker_care_app/models/order_model.dart';
-
 class OrderProvider extends ChangeNotifier {
   List<OrderModel> _pesananList = [];
   bool _isLoading = false;
@@ -16,22 +14,17 @@ class OrderProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   List<OrderModel> get activeOrders {
-    return _pesananList.where((order) => !order.isFinished).toList();
+    return _pesananList.where((order) => !order.isFinished && !order.isRejected).toList();
   }
 
-  List<OrderModel> get finishedOrders {
-    return _pesananList.where((order) => order.isFinished).toList();
-  }
+  List<OrderModel> get finishedOrders => _pesananList.where((order) => order.isFinished).toList();
+  List<OrderModel> get rejectedOrders => _pesananList.where((order) => order.isRejected).toList();
 
   int get totalOrders => _pesananList.length;
-  int get waitingOrders => _pesananList
-      .where((order) => order.status.toLowerCase() == 'menunggu kurir')
-      .length;
-  int get processOrders => _pesananList
-      .where((order) =>
-          order.status.toLowerCase() != 'menunggu kurir' && !order.isFinished)
-      .length;
+  int get waitingOrders => _pesananList.where((order) => order.isWaiting).length;
+  int get processOrders => _pesananList.where((order) => order.isProcess).length;
   int get completedOrders => finishedOrders.length;
+  int get rejectedOrdersCount => rejectedOrders.length;
 
   // Getter lama untuk profil_page.dart agar tetap kompatibel.
   int get totalPesanan => totalOrders;
@@ -50,10 +43,7 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchOrders({
-    bool showLoading = true,
-    String? customerEmail,
-  }) async {
+  Future<void> fetchOrders({bool showLoading = true, String? customerEmail}) async {
     if (showLoading) _setLoading(true);
     _errorMessage = null;
 
@@ -88,6 +78,7 @@ class OrderProvider extends ChangeNotifier {
     required String catatan,
     required String customerName,
     required String customerEmail,
+    String? shoePhotoPath,
   }) async {
     _setSubmitting(true);
     _errorMessage = null;
@@ -100,6 +91,7 @@ class OrderProvider extends ChangeNotifier {
       catatan: catatan,
       customerName: customerName,
       customerEmail: customerEmail,
+      shoePhotoPath: shoePhotoPath,
     );
 
     final success = result['success'] == true;
@@ -146,11 +138,16 @@ class OrderProvider extends ChangeNotifier {
   Future<bool> updateStatus({
     required String id,
     required String status,
+    String rejectionReason = '',
   }) async {
     _setSubmitting(true);
     _errorMessage = null;
 
-    final result = await ApiService.updateStatus(id: id, status: status);
+    final result = await ApiService.updateStatus(
+      id: id,
+      status: status,
+      rejectionReason: rejectionReason,
+    );
 
     final success = result['success'] == true;
     if (success) {
