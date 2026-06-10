@@ -288,7 +288,7 @@ class AdminOrderDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            "Hanya admin yang dapat mengubah status pengerjaan pesanan customer.",
+            "",
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13,

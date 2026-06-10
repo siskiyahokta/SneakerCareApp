@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:sneaker_care_app/screens/admin_dashboard_page.dart';
-import 'package:sneaker_care_app/screens/home_page.dart';
+import 'package:sneaker_care_app/screens/login_page.dart';
+import 'package:sneaker_care_app/screens/register_page.dart';
 
 class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
+
+  void _goToLogin(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+    );
+  }
+
+  void _goToRegister(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RegisterPage(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +114,7 @@ class LandingPage extends StatelessWidget {
                 const SizedBox(height: 10),
 
                 const Text(
-                  "Aplikasi jasa cuci dan perawatan sneaker dengan pick-up, tracking progress, dan dokumentasi before-after.",
+                  "Layanan cuci dan perawatan sneaker dengan pick-up, tracking progress, dan dokumentasi before-after.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white70,
@@ -141,22 +159,15 @@ class LandingPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
-                    icon: const Icon(Icons.person_rounded),
+                    icon: const Icon(Icons.login_rounded),
                     label: const Text(
-                      "Masuk sebagai Customer",
+                      "Masuk ke Aplikasi",
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HomePage(),
-                        ),
-                      );
-                    },
+                    onPressed: () => _goToLogin(context),
                   ),
                 ),
 
@@ -176,22 +187,15 @@ class LandingPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
-                    icon: const Icon(Icons.admin_panel_settings_rounded),
+                    icon: const Icon(Icons.person_add_alt_1_rounded),
                     label: const Text(
-                      "Masuk sebagai Admin",
+                      "Daftar Customer",
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminDashboardPage(),
-                        ),
-                      );
-                    },
+                    onPressed: () => _goToRegister(context),
                   ),
                 ),
 

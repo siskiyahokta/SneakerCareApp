@@ -1,12 +1,25 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import 'package:sneaker_care_app/firebase_options.dart';
 import 'package:sneaker_care_app/screens/landing_page.dart';
+import 'package:sneaker_care_app/services/auth_provider.dart';
 import 'package:sneaker_care_app/services/order_provider.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await GoogleSignIn.instance.initialize();
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (context) => AuthProvider()),
         ChangeNotifierProvider(create: (context) => OrderProvider()),
       ],
       child: const SneakimyCareApp(),
@@ -32,12 +45,11 @@ class SneakimyCareApp extends StatelessWidget {
           surface: Colors.white,
         ),
         appBarTheme: const AppBarTheme(
-          centerTitle: false,
           elevation: 0,
+          centerTitle: false,
           backgroundColor: Colors.white,
           foregroundColor: Color(0xFF1F1F1F),
         ),
-        fontFamily: 'Roboto',
       ),
       home: const LandingPage(),
     );

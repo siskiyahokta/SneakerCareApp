@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "471119169821",
+    "project_id": "sneakimycare",
+    "storage_bucket": "sneakimycare.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:471119169821:android:f0a3732b6c522f7e8e39f4",
+        "android_client_info": {
+          "package_name": "com.example.sneaker_care_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "471119169821-s3mot75nh410l5f12qk6dr1qtai1tu46.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZgCgoBPWRMna1OogXPbWKIJclQczHgxY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "471119169821-ak5rehoctjs1g2pau6cql1588jpr55mf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "471119169821-9c09l3dafih6odlvip0evlt2j9ckhkvk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.sneakerCareApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:471119169821:android:cca9064e5c7f9ed98e39f4",
+        "android_client_info": {
+          "package_name": "com.sneakimycare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "471119169821-e6vi39una53oim5su6rbrltdmpp02n6l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sneakimycare",
+            "certificate_hash": "23913a9daf9de7c9207bb80eb23dacf40aa13883"
+          }
+        },
+        {
+          "client_id": "471119169821-s3mot75nh410l5f12qk6dr1qtai1tu46.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZgCgoBPWRMna1OogXPbWKIJclQczHgxY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "471119169821-ak5rehoctjs1g2pau6cql1588jpr55mf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "471119169821-9c09l3dafih6odlvip0evlt2j9ckhkvk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.sneakerCareApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

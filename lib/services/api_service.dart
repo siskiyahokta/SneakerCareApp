@@ -5,7 +5,7 @@ class ApiService {
   // PENTING:
   // Kalau pakai HP fisik, isi dengan IP laptop dari ipconfig.
   // Contoh: http://192.168.1.8/sneakimy_care_api
-  static const String baseUrl = "http://192.168.110.31/sneakimycare_api";
+  static const String baseUrl = "http://192.168.10.11/sneakimycare_api";
 
   static Map<String, String> get headers => {
         "Content-Type": "application/json",
