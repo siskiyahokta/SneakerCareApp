@@ -33,6 +33,11 @@ class OrderProvider extends ChangeNotifier {
       .length;
   int get completedOrders => finishedOrders.length;
 
+  // Getter lama untuk profil_page.dart agar tetap kompatibel.
+  int get totalPesanan => totalOrders;
+  int get pesananAktif => activeOrders.length;
+  int get pesananSelesai => completedOrders;
+
   OrderProvider() {
     fetchOrders(showLoading: false);
   }

@@ -142,6 +142,73 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> saveFcmToken({
+    required String customerEmail,
+    required String customerName,
+    required String fcmToken,
+    required String role,
+    required String platform,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/notifications/save_token.php'),
+            headers: headers,
+            body: jsonEncode({
+              'customerEmail': customerEmail,
+              'customerName': customerName,
+              'fcmToken': fcmToken,
+              'role': role,
+              'platform': platform,
+            }),
+          )
+          .timeout(timeoutDuration);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return _error('Gagal menyimpan FCM token: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getNotifications({
+    required String customerEmail,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/notifications/get_notifications.php').replace(
+        queryParameters: {'customer_email': customerEmail.trim()},
+      );
+
+      final response = await http.get(uri, headers: headers).timeout(timeoutDuration);
+      return _handleResponse(response);
+    } catch (e) {
+      return _error('Gagal mengambil notifikasi: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> markNotificationRead({
+    String? id,
+    required String customerEmail,
+    bool markAll = false,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/notifications/read_notification.php'),
+            headers: headers,
+            body: jsonEncode({
+              'id': id ?? '',
+              'customerEmail': customerEmail,
+              'markAll': markAll,
+            }),
+          )
+          .timeout(timeoutDuration);
+
+      return _handleResponse(response);
+    } catch (e) {
+      return _error('Gagal memperbarui notifikasi: $e');
+    }
+  }
+
   static Map<String, dynamic> _handleResponse(http.Response response) {
     try {
       final decoded = jsonDecode(response.body);
